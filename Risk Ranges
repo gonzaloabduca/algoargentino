@@ -1,0 +1,45 @@
+import yfinance as yf
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+
+# Define the stock symbol (SPY) and the date range
+stock_symbol = 'pfix'
+start_date = '2023-01-01'
+end_date = '2023-12-31'
+
+# Download historical data using yfinance
+data = yf.download(stock_symbol, start=start_date, end=end_date)
+
+# Calculate 15-day Simple Moving Average (SMA)
+data['15D_SMA'] = data['Adj Close'].rolling(window=15).mean()
+
+# Calculate Logarithmic Change (Log Chg)
+data['Log_Chg'] = np.log(data['Adj Close'] / data['Adj Close'].shift(1))
+
+# Calculate Standard Deviation (Std Dev) of Log Chg for the last 15 days
+data['Std_Dev'] = data['Log_Chg'].rolling(window=15).std()
+
+# Calculate 15-day Realized Volatility (15d Realized Volat)
+data['15d_Realized_Volat'] = data['Std_Dev'] * np.sqrt(15)
+
+# Calculate 1-year Realized Volatility (1y Realized Volat)
+data['1y_Realized_Volat'] = data['Std_Dev'] * np.sqrt(252)
+
+# Calculate Trade Upper Band
+data['Trade_Upper_Band'] = (1 + data['15d_Realized_Volat']) * data['15D_SMA']
+
+# Calculate Trade Lower Band
+data['Trade_Lower_Band'] = (1 - data['15d_Realized_Volat']) * data['15D_SMA']
+
+# Plot the Price, Trade Upper Band, and Trade Lower Band
+plt.figure(figsize=(12, 6))
+plt.plot(data.index, data['Adj Close'], label='Price', color='black')
+plt.plot(data.index, data['Trade_Upper_Band'], color='blue')
+plt.plot(data.index, data['Trade_Lower_Band'], color='blue')
+plt.title('Price, Trade Upper and Lower Bands')
+plt.xlabel('Date')
+plt.ylabel('Price')
+plt.legend()
+plt.grid()
+plt.show()
