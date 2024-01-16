@@ -1,0 +1,49 @@
+import yfinance as yf
+import pandas as pd
+
+symbol = "AAPL"
+start_date = "2000-01-01"
+end_date = "2024-12-31"
+
+stock_data = yf.download(symbol, start=start_date, end=end_date)
+
+#Calcular el True Range de 15 dias para trade y el de 60 y 120 dias para trend
+
+def tr(df, period=15):
+    df = pd.DataFrame(stock_data, columns=['Open', 'High', 'Low', 'Close', 'Volume'])
+    df['previous_close'] = df['Close'].shift(1)
+    df['high'] = df['High'].rolling(window=period).max()
+    df['low'] = df['Low'].rolling(window=period).min()
+    df['high-low'] = abs(df['high'] - df['low'])
+    df['high-pc'] = abs(df['high'] - df['previous_close'])
+    df['low-pc'] = abs(df['low'] - df['previous_close'])
+    tr = df[['high-low', 'high-pc', 'low-pc']].max(axis=1)
+
+    return tr
+
+def supertrend(df):
+    df['tr'] = tr(df)
+    df['basic_upperband'] = ((df['High'] + df['Low'])/2) + df['tr']
+    df['basic_lowerband'] = ((df['High'] + df['Low'])/2) - df['tr']
+     for current in range(1, len(df.index)):
+        previous = current - 1
+
+        if df['Close'].iloc[current] > df['upperband'].iloc[previous]:
+            df.loc[current, 'in_uptrend'] = True
+        elif df['Close'].iloc[current] < df['lowerband'].iloc[previous]:
+            df.loc[current, 'in_uptrend'] = False
+        else:
+            df.loc[current, 'in_uptrend'] = df['in_uptrend'].iloc[previous]
+
+            if df['in_uptrend'].iloc[current] and df['lowerband'].iloc[current] < df['lowerband'].iloc[previous]:
+                df.loc[current, 'lowerband'] = df['lowerband'].iloc[previous]
+
+            if not df['in_uptrend'].iloc[current] and df['upperband'].iloc[current] > df['upperband'].iloc[previous]:
+                df.loc[current, 'upperband'] = df['upperband'].iloc[previous]
+
+    return(df)
+
+
+result_df = supertrend(stock_data)
+
+print(result_df.head(520))
